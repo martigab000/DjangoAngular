@@ -12,3 +12,9 @@ class Employees(models.Model):
     Department = models.CharField(max_length=100)
     DateOfJoining = models.DateField()
     PhotoFileName = models.CharField(max_length=100)
+
+class Questions(models.Model):
+    QuestionID = models.AutoField(primary_key=True)
+    Input = models.CharField(max_length=100)
+    Response = models.CharField(max_length=100)
+    Date = models.DateField()

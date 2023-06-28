@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'EmployeeApp.apps.EmployeeappConfig',
     'rest_framework'
+
 ]
 
 CORS_ORIGIN_ALLOW_ALL = True

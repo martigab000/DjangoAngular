@@ -8,7 +8,7 @@ import { Observable } from 'rxjs';
 })
 export class SharedService {
 readonly APIUrl = "http://127.0.0.1:8000";
-readonly PhotoUrl = "http://127.0.0.1:8000/media/";
+// readonly PhotoUrl = "http://127.0.0.1:8000/media/";
 
   constructor(private http:HttpClient) { }
 
@@ -37,6 +37,22 @@ readonly PhotoUrl = "http://127.0.0.1:8000/media/";
     return this.http.post(this.APIUrl + '/employee/',val);
   }
 
+  updateQuestion(val:any){
+    return this.http.put(this.APIUrl + '/question/',val);
+  }
+
+  deleteQuestion(val:any){
+    return this.http.delete(this.APIUrl + '/question/'+val);
+  }
+
+  getQuesList():Observable<any[]>{
+    return this.http.get<any[]>(this.APIUrl + '/question/');
+  }
+
+  addQuestion(val:any){
+    return this.http.post(this.APIUrl + '/question/',val);
+  }
+
   updateEmployee(val:any){
     return this.http.put(this.APIUrl + '/employee/',val);
   }
@@ -45,9 +61,9 @@ readonly PhotoUrl = "http://127.0.0.1:8000/media/";
     return this.http.delete(this.APIUrl + '/employee/'+val);
   }
 
-  UploadPhoto(val:any){
-    return this.http.post(this.APIUrl+'/SaveFile',val);
-  }
+  // UploadPhoto(val:any){
+  //   return this.http.post(this.APIUrl+'/SaveFile',val);
+  // }
 
   getAllDepartmentNames():Observable<any[]>{
     return this.http.get<any[]>(this.APIUrl+'/department/');

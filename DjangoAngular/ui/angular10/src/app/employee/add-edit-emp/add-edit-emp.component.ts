@@ -33,7 +33,7 @@ export class AddEditEmpComponent implements OnInit {
       this.Department=this.emp.Department;
       this.DateOfJoining=this.emp.DateOfJoining;
       this.PhotoFileName=this.emp.PhotoFileName;
-      this.PhotoFilePath=this.service.PhotoUrl+this.PhotoFileName;
+      // this.PhotoFilePath=this.service.PhotoUrl+this.PhotoFileName;
     });
   }
 
@@ -67,10 +67,10 @@ export class AddEditEmpComponent implements OnInit {
     const formData:FormData=new FormData();
     formData.append('uploadedFile',file,file.name);
 
-    this.service.UploadPhoto(formData).subscribe((data:any)=>{
-      this.PhotoFileName=data.toString();
-      this.PhotoFilePath=this.service.PhotoUrl+this.PhotoFileName;
-    })
+    // this.service.UploadPhoto(formData).subscribe((data:any)=>{
+    //   this.PhotoFileName=data.toString();
+    //   this.PhotoFilePath=this.service.PhotoUrl+this.PhotoFileName;
+    // })
   }
 
 }

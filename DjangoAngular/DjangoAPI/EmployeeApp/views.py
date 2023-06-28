@@ -7,8 +7,8 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.parsers import JSONParser
 
-from EmployeeApp.models import Departments, Employees
-from EmployeeApp.serializers import DepartmentSerializer, EmployeeSerializer
+from EmployeeApp.models import Departments, Employees,Questions
+from EmployeeApp.serializers import DepartmentSerializer, EmployeeSerializer, QuestionSerializer
 
 
 # Create your views here.
@@ -68,6 +68,36 @@ def employeeApi(request,id=0):
     elif request.method=='DELETE':
         employee=Employees.objects.get(EmployeeId=id)
         employee.delete()
+        return JsonResponse("Deleted Succeffully!!", safe=False)
+    
+@csrf_exempt
+def questionApi(request, id=0):
+    if request.method=='GET':
+        questions = Questions.objects.all()
+        questions_serializer = QuestionSerializer(questions, many=True)
+        return JsonResponse(questions_serializer.data, safe=False)
+
+    elif request.method=='POST':
+        questions_data=JSONParser().parse(request)
+        questions_serializer = QuestionSerializer(data=questions_data)
+        if questions_serializer.is_valid():
+            questions_serializer.save()
+            return JsonResponse("Added Successfully!!" , safe=False)
+        print(questions_serializer.errors)
+        return JsonResponse("Failed to Add.",safe=False) 
+    
+    elif request.method=='PUT':
+        questions_data = JSONParser().parse(request)
+        questions=Questions.objects.get(QuestionID=questions_data['QuestionID'])
+        questions_serializer=QuestionSerializer(questions,data=questions_data)
+        if questions_serializer.is_valid():
+            questions_serializer.save()
+            return JsonResponse("Updated Successfully!!", safe=False)
+        return JsonResponse("Failed to Update.", safe=False)
+
+    elif request.method=='DELETE':
+        questions=Questions.objects.get(QuestionID=id)
+        questions.delete()
         return JsonResponse("Deleted Succeffully!!", safe=False)
 
 
