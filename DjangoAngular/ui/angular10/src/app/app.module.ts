@@ -15,7 +15,6 @@ import { HttpClientModule } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { QuestionsComponent } from './questions/questions.component';
 import { ShowComponent } from './questions/show/show.component';
-import { AskComponent } from './questions/ask/ask.component';
 
 @NgModule({
   declarations: [
@@ -27,8 +26,7 @@ import { AskComponent } from './questions/ask/ask.component';
     ShowEmpComponent,
     AddEditEmpComponent,
     QuestionsComponent,
-    ShowComponent,
-    AskComponent
+    ShowComponent
   ],
   imports: [
     BrowserModule,
