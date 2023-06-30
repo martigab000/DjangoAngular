@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, Subject, tap } from 'rxjs';
 
 
 @Injectable({
@@ -11,6 +11,12 @@ readonly APIUrl = "http://127.0.0.1:8000";
 // readonly PhotoUrl = "http://127.0.0.1:8000/media/";
 
   constructor(private http:HttpClient) { }
+
+  private _refreshrequired=new Subject<void>();
+
+  get Refreshrequired(){
+    return this._refreshrequired;
+  }
 
   getDepList():Observable<any[]>{
     return this.http.get<any[]>(this.APIUrl + '/department/');
@@ -50,7 +56,11 @@ readonly APIUrl = "http://127.0.0.1:8000";
   }
 
   addQuestion(val:any){
-    return this.http.post(this.APIUrl + '/question/',val);
+    return this.http.post(this.APIUrl + '/question/',val).pipe(
+      tap(()=>{
+        this.Refreshrequired.next();
+      })
+    );
   }
 
   updateEmployee(val:any){

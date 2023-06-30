@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'EmployeeApp.apps.EmployeeappConfig',
-    'rest_framework'
+    'rest_framework',
+    'localGPT'
 
 ]
 
@@ -63,7 +64,7 @@ ROOT_URLCONF = 'DjangoAPI.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'localGPT')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

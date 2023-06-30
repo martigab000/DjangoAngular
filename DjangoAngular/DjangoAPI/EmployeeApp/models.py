@@ -15,6 +15,6 @@ class Employees(models.Model):
 
 class Questions(models.Model):
     QuestionID = models.AutoField(primary_key=True)
-    Input = models.CharField(max_length=100)
-    Response = models.CharField(max_length=100)
+    Input = models.CharField(max_length=1000)
+    Response = models.CharField(max_length=1000)
     Date = models.DateField()

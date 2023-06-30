@@ -1,5 +1,6 @@
 import urllib.request
 from urllib import request
+from anyio import sleep
 
 from django.core.files.storage import default_storage
 from django.http.response import JsonResponse
@@ -9,6 +10,7 @@ from rest_framework.parsers import JSONParser
 
 from EmployeeApp.models import Departments, Employees,Questions
 from EmployeeApp.serializers import DepartmentSerializer, EmployeeSerializer, QuestionSerializer
+
 
 
 # Create your views here.
@@ -74,6 +76,7 @@ def employeeApi(request,id=0):
 def questionApi(request, id=0):
     if request.method=='GET':
         questions = Questions.objects.all()
+        
         questions_serializer = QuestionSerializer(questions, many=True)
         return JsonResponse(questions_serializer.data, safe=False)
 
@@ -82,6 +85,8 @@ def questionApi(request, id=0):
         questions_serializer = QuestionSerializer(data=questions_data)
         if questions_serializer.is_valid():
             questions_serializer.save()
+            # sleep(5)
+            # chkDB()
             return JsonResponse("Added Successfully!!" , safe=False)
         print(questions_serializer.errors)
         return JsonResponse("Failed to Add.",safe=False) 
@@ -107,3 +112,9 @@ def SaveFile(request):
     file_name = default_storage.save(file.name,file)
 
     return JsonResponse(file_name,safe=False)
+
+# @csrf_exempt
+# def chkDB():
+#     items = Questions.objects.db.
+#     print(items.Input)
+#     return

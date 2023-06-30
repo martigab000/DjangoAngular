@@ -1,5 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { SharedService } from 'src/app/shared.service';
+// import {SwUpdate} from '@angular/service-worker';
 // import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 @Component({
@@ -20,6 +21,7 @@ export class ShowComponent {
   Date:string | undefined;
 
   QuestionList:any=[];
+  Questionlist:any;
 
   
   
@@ -50,6 +52,9 @@ export class ShowComponent {
   ngOnInit(): void {
     // this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl('./form1500.pdf');
     this.refreshQuesList();
+    this.service.Refreshrequired.subscribe(response=>{
+      this.refreshQuesList();
+    });
   }
 
   refreshQuesList(){
@@ -57,5 +62,7 @@ export class ShowComponent {
       this.QuestionList=data;
     })
   }
+
+  
 
 }
