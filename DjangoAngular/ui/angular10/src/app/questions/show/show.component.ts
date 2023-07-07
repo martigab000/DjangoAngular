@@ -1,6 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
+import { Observable, delay } from 'rxjs';
 import { SharedService } from 'src/app/shared.service';
-// import {SwUpdate} from '@angular/service-worker';
 // import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 @Component({
@@ -21,8 +21,6 @@ export class ShowComponent {
   Date:string | undefined;
 
   QuestionList:any=[];
-  Questionlist:any;
-
   
   
   addQuestion(){
@@ -51,9 +49,11 @@ export class ShowComponent {
 
   ngOnInit(): void {
     // this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl('./form1500.pdf');
-    this.refreshQuesList();
-    this.service.Refreshrequired.subscribe(response=>{
-      this.refreshQuesList();
+    this.refreshQuesList() 
+    this.service.getQuesList().subscribe(value=> {
+      if (value){
+        this.refreshQuesList();
+      }
     });
   }
 
@@ -62,7 +62,4 @@ export class ShowComponent {
       this.QuestionList=data;
     })
   }
-
-  
-
 }

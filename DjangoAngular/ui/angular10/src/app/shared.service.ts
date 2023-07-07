@@ -1,6 +1,7 @@
+import { JsonPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, Subject, tap } from 'rxjs';
+import { Observable, Subject, tap, interval, startWith, distinctUntilChanged, map } from 'rxjs';
 
 
 @Injectable({
@@ -8,6 +9,7 @@ import { Observable, Subject, tap } from 'rxjs';
 })
 export class SharedService {
 readonly APIUrl = "http://127.0.0.1:8000";
+private previousValue: any;
 // readonly PhotoUrl = "http://127.0.0.1:8000/media/";
 
   constructor(private http:HttpClient) { }
@@ -18,33 +20,12 @@ readonly APIUrl = "http://127.0.0.1:8000";
     return this._refreshrequired;
   }
 
-  getDepList():Observable<any[]>{
-    return this.http.get<any[]>(this.APIUrl + '/department/');
-  }
-
-  addDepartment(val:any){
-    return this.http.post(this.APIUrl + '/department/',val);
-  }
-
-  updateDepartment(val:any){
-    return this.http.put(this.APIUrl + '/department/',val);
-  }
-
-  deleteDepartment(val:any){
-    return this.http.delete(this.APIUrl + '/department/'+val);
-  }
-
-
-  getEmpList():Observable<any[]>{
-    return this.http.get<any[]>(this.APIUrl + '/employee/');
-  }
-
-  addEmployee(val:any){
-    return this.http.post(this.APIUrl + '/employee/',val);
-  }
-
   updateQuestion(val:any){
     return this.http.put(this.APIUrl + '/question/',val);
+  }
+
+  getOneQues(val:any){
+    return this.http.get(this.APIUrl + '/question/'+val);
   }
 
   deleteQuestion(val:any){
@@ -61,22 +42,6 @@ readonly APIUrl = "http://127.0.0.1:8000";
         this.Refreshrequired.next();
       })
     );
-  }
-
-  updateEmployee(val:any){
-    return this.http.put(this.APIUrl + '/employee/',val);
-  }
-
-  deleteEmployee(val:any){
-    return this.http.delete(this.APIUrl + '/employee/'+val);
-  }
-
-  // UploadPhoto(val:any){
-  //   return this.http.post(this.APIUrl+'/SaveFile',val);
-  // }
-
-  getAllDepartmentNames():Observable<any[]>{
-    return this.http.get<any[]>(this.APIUrl+'/department/');
   }
 
 
