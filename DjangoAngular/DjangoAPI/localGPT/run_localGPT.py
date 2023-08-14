@@ -1,28 +1,28 @@
+import logging
+import sqlite3
 import click
 import torch
-import logging
+from auto_gptq import AutoGPTQForCausalLM
+from huggingface_hub import hf_hub_download
 from langchain.chains import RetrievalQA
-from langchain.embeddings import HuggingFaceInstructEmbeddings
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.llms import HuggingFacePipeline
+from langchain.embeddings import HuggingFaceInstructEmbeddings, HuggingFaceEmbeddings
+from langchain.llms import HuggingFacePipeline, LlamaCpp
+from langchain.memory import ConversationBufferMemory
+from langchain.prompts import PromptTemplate
+
 # from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.vectorstores import Chroma
-from transformers import LlamaForCausalLM, LlamaTokenizer, pipeline
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from auto_gptq import AutoGPTQForCausalLM, BaseQuantizeConfig
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    GenerationConfig,
+    LlamaForCausalLM,
+    LlamaTokenizer,
+    pipeline,
+)
+
 from constants import CHROMA_SETTINGS, EMBEDDING_MODEL_NAME, PERSIST_DIRECTORY
-from transformers import GenerationConfig
-import sqlite3
-# from EmployeeApp.views import getText
 
-
-text_input = ''
-
-def sendText(text):
-    global text_input
-    text_input = text
-    
-    
 
 def load_model(device_type, model_id, model_basename=None):
     """
@@ -33,7 +33,7 @@ def load_model(device_type, model_id, model_basename=None):
     Args:
         device_type (str): Type of device to use, e.g., "cuda" for GPU or "cpu" for CPU.
         model_id (str): Identifier of the model to load from HuggingFace's model hub.
-        model_basename (str, optional): Basename of the model if using quantized models. 
+        model_basename (str, optional): Basename of the model if using quantized models.
             Defaults to None.
 
     Returns:
@@ -42,38 +42,58 @@ def load_model(device_type, model_id, model_basename=None):
     Raises:
         ValueError: If an unsupported model or device type is provided.
     """
-    
-    logging.info(f'Loading Model: {model_id}, on: {device_type}')
-    logging.info('This action can take a few minutes!')
+    logging.info(f"Loading Model: {model_id}, on: {device_type}")
+    logging.info("This action can take a few minutes!")
 
     if model_basename is not None:
-        # The code supports all huggingface models that ends with GPTQ and have some variation of .no-act.order or .safetensors in their HF repo.
-        logging.info('Using AutoGPTQForCausalLM for quantized models')
+        if ".ggml" in model_basename:
+            logging.info("Using Llamacpp for GGML quantized models")
+            model_path = hf_hub_download(repo_id=model_id, filename=model_basename)
+            max_ctx_size = 2048
+            kwargs = {
+                "model_path": model_path,
+                "n_ctx": max_ctx_size,
+                "max_tokens": max_ctx_size,
+            }
+            if device_type.lower() == "mps":
+                kwargs["n_gpu_layers"] = 1000
+            if device_type.lower() == "cuda":
+                kwargs["n_gpu_layers"] = 1000
+                kwargs["n_batch"] = max_ctx_size
+            return LlamaCpp(**kwargs)
 
-        if '.safetensors' in model_basename:
-            # Remove the ".safetensors" ending if present
-            model_basename = model_basename.replace('.safetensors', "")
+        else:
+            # The code supports all huggingface models that ends with GPTQ and have some variation
+            # of .no-act.order or .safetensors in their HF repo.
+            logging.info("Using AutoGPTQForCausalLM for quantized models")
 
-        tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
-        logging.info('Tokenizer loaded')
+            if ".safetensors" in model_basename:
+                # Remove the ".safetensors" ending if present
+                model_basename = model_basename.replace(".safetensors", "")
 
-        model = AutoGPTQForCausalLM.from_quantized(
-            model_id,
-            model_basename=model_basename,
-            use_safetensors=True,
-            trust_remote_code=True,
-            device="cuda:0",
-            use_triton=False,
-            quantize_config=None
-        )
-    elif device_type.lower() == 'cuda': # The code supports all huggingface models that ends with -HF or which have a .bin file in their HF repo.
-        logging.info('Using AutoModelForCausalLM for full models')
+            tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=True)
+            logging.info("Tokenizer loaded")
+
+            model = AutoGPTQForCausalLM.from_quantized(
+                model_id,
+                model_basename=model_basename,
+                use_safetensors=True,
+                trust_remote_code=True,
+                device="cuda:0",
+                use_triton=False,
+                quantize_config=None,
+            )
+    elif (
+        device_type.lower() == "cuda"
+    ):  # The code supports all huggingface models that ends with -HF or which have a .bin
+        # file in their HF repo.
+        logging.info("Using AutoModelForCausalLM for full models")
         tokenizer = AutoTokenizer.from_pretrained(model_id)
-        logging.info('Tokenizer loaded')
+        logging.info("Tokenizer loaded")
 
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            device_map='auto',
+            device_map="auto",
             torch_dtype=torch.float16,
             low_cpu_mem_usage=True,
             trust_remote_code=True,
@@ -81,13 +101,15 @@ def load_model(device_type, model_id, model_basename=None):
         )
         model.tie_weights()
     else:
-        logging.info('Using LlamaTokenizer')
+        logging.info("Using LlamaTokenizer")
         tokenizer = LlamaTokenizer.from_pretrained(model_id)
         model = LlamaForCausalLM.from_pretrained(model_id)
 
     # Load configuration from the model to avoid warnings
     generation_config = GenerationConfig.from_pretrained(model_id)
-    # see here for details: https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig.from_pretrained.returns
+    # see here for details:
+    # https://huggingface.co/docs/transformers/
+    # main_classes/text_generation#transformers.GenerationConfig.from_pretrained.returns
 
     # Create a pipeline for text generation
     pipe = pipeline(
@@ -98,11 +120,11 @@ def load_model(device_type, model_id, model_basename=None):
         temperature=0,
         top_p=0.95,
         repetition_penalty=1.15,
-        generation_config=generation_config
+        generation_config=generation_config,
     )
 
     local_llm = HuggingFacePipeline(pipeline=pipe)
-    logging.info('Local LLM Loaded')
+    logging.info("Local LLM Loaded")
 
     return local_llm
 
@@ -111,31 +133,41 @@ def load_model(device_type, model_id, model_basename=None):
 @click.command()
 @click.option(
     "--device_type",
-    default="cuda",
+    default="cuda" if torch.cuda.is_available() else "cpu",
     type=click.Choice(
         [
-            "cpu", "cuda", "ipu", "xpu", "mkldnn", "opengl", "opencl", "ideep", "hip", "ve", "fpga", "ort",
-            "xla", "lazy", "vulkan", "mps", "meta", "hpu", "mtia",
+            "cpu",
+            "cuda",
+            "ipu",
+            "xpu",
+            "mkldnn",
+            "opengl",
+            "opencl",
+            "ideep",
+            "hip",
+            "ve",
+            "fpga",
+            "ort",
+            "xla",
+            "lazy",
+            "vulkan",
+            "mps",
+            "meta",
+            "hpu",
+            "mtia",
         ],
     ),
     help="Device to run on. (Default is cuda)",
 )
 @click.option(
     "--show_sources",
-    default=True,
-    type=click.Choice(
-        [
-            False,
-            True,
-        ]
-    ),
+    "-s",
+    is_flag=True,
     help="Show sources along with answers (Default is False)",
 )
-
-
 def main(device_type, show_sources):
-    '''
-    This function implements the information retreival task.
+    """
+    This function implements the information retrieval task.
 
 
     1. Loads an embedding model, can be HuggingFaceInstructEmbeddings or HuggingFaceEmbeddings
@@ -143,17 +175,15 @@ def main(device_type, show_sources):
     3. Loads the local LLM using load_model function - You can now set different LLMs.
     4. Setup the Question Answer retreival chain.
     5. Question answers.
-    '''
-    # from DjangoAPI.EmployeeApp.views import getText
-    logging.info(f'Running on: {device_type}')
-    logging.info(f'Display Source Documents set to: {show_sources}')
+    """
 
-    # embeddings = HuggingFaceInstructEmbeddings(
-    #     model_name=EMBEDDING_MODEL_NAME, model_kwargs={"device": device_type}
-    # )
+    logging.info(f"Running on: {device_type}")
+    logging.info(f"Display Source Documents set to: {show_sources}")
+
+    embeddings = HuggingFaceInstructEmbeddings(model_name=EMBEDDING_MODEL_NAME, model_kwargs={"device": device_type})
 
     # uncomment the following line if you used HuggingFaceEmbeddings in the ingest.py
-    embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
+    # embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
 
     # load the vectorstore
     db = Chroma(
@@ -167,72 +197,105 @@ def main(device_type, show_sources):
 
     # for HF models
     # model_id = "TheBloke/vicuna-7B-1.1-HF"
+    # model_basename = None
     # model_id = "TheBloke/Wizard-Vicuna-7B-Uncensored-HF"
     # model_id = "TheBloke/guanaco-7B-HF"
-    # model_id = 'NousResearch/Nous-Hermes-13b' # Requires ~ 23GB VRAM. Using STransformers alongside will 100% create OOM on 24GB cards. 
+    # model_id = 'NousResearch/Nous-Hermes-13b' # Requires ~ 23GB VRAM. Using STransformers
+    # alongside will 100% create OOM on 24GB cards.
     # llm = load_model(device_type, model_id=model_id)
 
     # for GPTQ (quantized) models
     # model_id = "TheBloke/Nous-Hermes-13B-GPTQ"
     # model_basename = "nous-hermes-13b-GPTQ-4bit-128g.no-act.order"
     # model_id = "TheBloke/WizardLM-30B-Uncensored-GPTQ"
-    # model_basename = "WizardLM-30B-Uncensored-GPTQ-4bit.act-order.safetensors" # Requires ~21GB VRAM. Using STransformers alongside can potentially create OOM on 24GB cards.
-    model_id = "TheBloke/wizardLM-7B-GPTQ"
-    model_basename = "wizardLM-7B-GPTQ-4bit.compat.no-act-order.safetensors"
+    # model_basename = "WizardLM-30B-Uncensored-GPTQ-4bit.act-order.safetensors" # Requires
+    # ~21GB VRAM. Using STransformers alongside can potentially create OOM on 24GB cards.
+    # model_id = "TheBloke/wizardLM-7B-GPTQ"
+    # model_basename = "wizardLM-7B-GPTQ-4bit.compat.no-act-order.safetensors"
+    
+    # --------------------BELOW--------------------working models to use in project ----------------------------------------------------------------------------
+    
     # model_id = "TheBloke/WizardLM-7B-uncensored-GPTQ"
     # model_basename = "WizardLM-7B-uncensored-GPTQ-4bit-128g.compat.no-act-order.safetensors"
-    llm = load_model(device_type, model_id=model_id, model_basename = model_basename)
+    
+    model_id = "TheBloke/WizardLM-13B-V1.1-GPTQ"
+    model_basename = "wizardlm-13b-v1.1-GPTQ-4bit-128g.no-act.order.safetensors"
+    
+    # model_id = "TheBloke/Llama-2-7B-Chat-GPTQ"
+    # model_id = "TheBloke/StableBeluga-7B-GPTQ"
+    # model_basename = "gptq_model-4bit-128g.safetensors"
+    
+    # --------------------ABOVE--------------------working models to use in project ----------------------------------------------------------------------------
+
+    # for GGML (quantized cpu+gpu+mps) models - check if they support llama.cpp
+    # model_id = "TheBloke/wizard-vicuna-13B-GGML"
+    # model_basename = "wizard-vicuna-13B.ggmlv3.q4_0.bin"
+    # model_basename = "wizard-vicuna-13B.ggmlv3.q6_K.bin"
+    # model_basename = "wizard-vicuna-13B.ggmlv3.q2_K.bin"
+    # model_id = "TheBloke/orca_mini_3B-GGML"
+    # model_basename = "orca-mini-3b.ggmlv3.q4_0.bin"
+
+    # model_id = "TheBloke/Llama-2-7B-Chat-GGML"
+    # model_basename = "llama-2-7b-chat.ggmlv3.q4_0.bin"
+
+    template = """Use the following pieces of context to answer the question at the end. If you don't know the answer,\
+just say that you don't know, don't try to make up an answer.
+
+{context}
+
+{history}
+Question: {question}
+Helpful Answer:"""
+
+    prompt = PromptTemplate(input_variables=["history", "context", "question"], template=template)
+    memory = ConversationBufferMemory(input_key="question", memory_key="history")
+
+    llm = load_model(device_type, model_id=model_id, model_basename=model_basename)
 
     qa = RetrievalQA.from_chain_type(
-        llm=llm, chain_type="stuff", retriever=retriever, return_source_documents=True
+        llm=llm,
+        chain_type="stuff",
+        retriever=retriever,
+        return_source_documents=True,
+        chain_type_kwargs={"prompt": prompt, "memory": memory},
     )
-    
-    conn = sqlite3.connect(r'C:\Users\gabriel.martin\OneDrive - Office Ally Inc\Desktop\AngularAI\chatbox-ui\DjangoAngular\DjangoAPI\db.sqlite3')
-    c = conn.cursor()
-    
     # Interactive questions and answers
+    conn = sqlite3.connect(r'D:\Git\DjangoAngular\DjangoAngular\DjangoAPI\db.sqlite3')
+    c = conn.cursor()
     while True:
-        
+        # query = input("\nEnter a query: ")
         c.execute('SELECT * FROM EmployeeApp_questions WHERE Response = "none"')
         inp = c.fetchone()
         if inp:
             id = inp[0]
             query = str(inp[1])
-                    
-            # Get the answer from the chain
+        # Get the answer from the chain
             res = qa(query)
             answer, docs = res["result"], res["source_documents"]
 
-            # Print the result
+            # # Print the result
             # print("\n\n> Question:")
             # print(query)
             # print("\n> Answer:")
             # print(answer)
-            
+
+            # if show_sources:  # this is a flag that you can set to disable showing answers.
+            #     # # Print the relevant sources used for the answer
+            #     print("----------------------------------SOURCE DOCUMENTS---------------------------")
+            #     for document in docs:
+            #         print("\n> " + document.metadata["source"] + ":")
+            #         print(document.page_content)
+            #     print("----------------------------------SOURCE DOCUMENTS---------------------------")
+
             answer = str(answer)
             c.execute('UPDATE EmployeeApp_questions SET Response = (?) WHERE QuestionID = (?)', (answer, id))
             conn.commit()
             
             if query == "exit":
                 break
-        
-    c.close()
-    conn.close()
-            
-            # if show_sources:  # this is a flag that you can set to disable showing answers.
-            #     # # Print the relevant sources used for the answer
-            #     print(
-            #         "----------------------------------SOURCE DOCUMENTS---------------------------"
-            #     )
-            #     for document in docs:
-            #         print("\n> " + document.metadata["source"] + ":")
-            #         print(document.page_content)
-            #     print(
-            #         "----------------------------------SOURCE DOCUMENTS---------------------------"
-            #     )
-
 
 if __name__ == "__main__":
-    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(message)s',
-                        level=logging.INFO)
+    logging.basicConfig(
+        format="%(asctime)s - %(levelname)s - %(filename)s:%(lineno)s - %(message)s", level=logging.INFO
+    )
     main()
