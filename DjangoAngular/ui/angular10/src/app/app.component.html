@@ -1,18 +1,35 @@
-<div class="container">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Management Portal</title>
+  <link rel="stylesheet" href="app.component.css">
+  <link href="https://fonts.googleapis.com/css?family=Baloo+2:400,800&display=swap" rel="stylesheet">
+</head>
+<body class="intermediate-mode">
 
-  <h3 class="d-flex justify-content-center">Angular 10, Web API, SQL Server App Demo </h3>
-  <h5 class="d-flex justify-content-center">Employee Management Portal</h5>
+<nav class="navbar navbar-expand-lg navbar-light bg-intermediate">
+  <div class="container">
+    <a class="navbar-brand" href="#">OA Chat GBT</a>
+  </div>
+</nav>
 
-  <nav class="navbar navbar-expand-sm bg-light navbar-dark">
-  <ul class="navbar-nav">
-      
-      <li class="nav-item">
-        <button routerLink="questions"
-        class="m-1 btn btn-light btn-outline-primary" Button>Questions</button>
-    </li>
-  </ul>
-  </nav>
+<div class="container intermediate-bg">
+  <header class="text-center my-5">
+    <h1 class="display-4 text-intermediate">Question Tracker Thingy</h1>
+    <p class="lead text-intermediate-dark">What can we help you with?</p>
+  </header>
 
-<router-outlet></router-outlet>
+  <section class="text-center">
+    <button  routerLink="questions"
+    class="btn btn-intermediate">Questions</button>
+  </section>
 
+  <hr>
+
+  <router-outlet></router-outlet>
 </div>
+
+</body>
+</html>

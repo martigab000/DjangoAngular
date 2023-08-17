@@ -8,7 +8,8 @@ import { Observable, Subject, tap, interval, startWith, distinctUntilChanged, ma
   providedIn: 'root'
 })
 export class SharedService {
-readonly APIUrl = "http://127.0.0.1:8000";
+readonly APIUrl = "http://192.168.1.156:8000";
+// readonly APIUrl = "192.168.70.162:1436"
 private previousValue: any;
 // readonly PhotoUrl = "http://127.0.0.1:8000/media/";
 
